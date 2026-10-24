@@ -3,7 +3,11 @@ import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validate.js';
 import { protect } from '../middleware/auth.js';
-import { forgotPassword, login, me, register, resetPassword } from '../controllers/auth.controller.js';
+import { forgotPassword, login, me, register, resetPassword ,
+  verifyEmailOTP,
+  resendVerificationOTP
+} from '../controllers/auth.controller.js';
+
 
 const router = Router();
 const limiter = rateLimit({
@@ -32,6 +36,30 @@ router.post('/reset-password', limiter, [
   body('token').isString().isLength({ min: 20, max: 200 }).withMessage('Invalid reset token'),
   password,
 ], validate, resetPassword);
+
+router.post(
+  '/verify-email-otp',
+  limiter,
+  [
+    body('email').trim().toLowerCase().isEmail()
+      .withMessage('Enter a valid email'),
+    body('otp').isString().matches(/^\d{6}$/)
+      .withMessage('OTP must be 6 digits'),
+  ],
+  validate,
+  verifyEmailOTP
+);
+
+router.post(
+  '/resend-email-otp',
+  limiter,
+  [
+    body('email').trim().toLowerCase().isEmail()
+      .withMessage('Enter a valid email'),
+  ],
+  validate,
+  resendVerificationOTP
+);
 
 router.get('/me', protect, me);
 
