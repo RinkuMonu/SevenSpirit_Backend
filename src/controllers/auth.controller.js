@@ -168,13 +168,14 @@ const maxOtpAttempts = 5;
 //   }
 // };
 
+
 export const verifyEmailOTP = async (req, res, next) => {
   try {
     const email = String(req.body.email || "")
       .trim()
       .toLowerCase();
 
-    const otp = String(req.body.otp || "");
+    const otp = String(req.body.otp || "").trim();
 
     if (!/^\d{6}$/.test(otp)) {
       return res.status(400).json({
@@ -185,21 +186,14 @@ export const verifyEmailOTP = async (req, res, next) => {
 
     const user = await User.findOne({ email }).select(
       "+emailVerificationOtpHash " +
-        "+emailVerificationOtpExpiresAt " +
-        "+emailVerificationOtpAttempts",
+      "+emailVerificationOtpExpiresAt " +
+      "+emailVerificationOtpAttempts"
     );
 
     if (!user) {
       return res.status(400).json({
         success: false,
         message: "Invalid email or OTP.",
-      });
-    }
-
-    if (user.emailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already verified. Please request a login OTP.",
       });
     }
 
@@ -214,7 +208,9 @@ export const verifyEmailOTP = async (req, res, next) => {
       });
     }
 
-    if ((user.emailVerificationOtpAttempts || 0) >= maxOtpAttempts) {
+    if (
+      (user.emailVerificationOtpAttempts || 0) >= maxOtpAttempts
+    ) {
       return res.status(429).json({
         success: false,
         message: "Too many incorrect attempts. Request a new OTP.",
@@ -233,7 +229,7 @@ export const verifyEmailOTP = async (req, res, next) => {
       });
     }
 
-    // Verify email and clear the one-time verification OTP.
+    // Successful OTP: verify email and clear the one-time code.
     user.emailVerified = true;
     user.emailVerificationOtpHash = null;
     user.emailVerificationOtpExpiresAt = null;
@@ -241,10 +237,10 @@ export const verifyEmailOTP = async (req, res, next) => {
 
     await user.save();
 
-    // Return an authentication token after successful verification.
+    // Return the login token for both new and existing users.
     return res.status(200).json({
       success: true,
-      message: "Email verified successfully.",
+      message: "OTP verified and login successful.",
       token: signToken(user._id),
       user: user.toPublic(),
     });
@@ -261,22 +257,22 @@ export const resendVerificationOTP = async (req, res, next) => {
 
     const user = await User.findOne({ email }).select(
       "+emailVerificationOtpHash " +
-        "+emailVerificationOtpExpiresAt " +
-        "+emailVerificationOtpAttempts " +
-        "+emailVerificationLastSentAt",
+      "+emailVerificationOtpExpiresAt " +
+      "+emailVerificationOtpAttempts " +
+      "+emailVerificationLastSentAt"
     );
 
-    // Avoid revealing whether an account exists.
-    if (!user || user.emailVerified) {
+    // Do not reveal whether the account exists.
+    if (!user) {
       return res.status(200).json({
         success: true,
-        message:
-          "If the account needs verification, instructions will be sent.",
+        message: "If an account exists, an OTP will be sent.",
       });
     }
 
     const now = Date.now();
-    const lastSent = user.emailVerificationLastSentAt?.getTime() || 0;
+    const lastSent =
+      user.emailVerificationLastSentAt?.getTime() || 0;
 
     if (now - lastSent < resendCooldownMs) {
       return res.status(429).json({
@@ -288,7 +284,8 @@ export const resendVerificationOTP = async (req, res, next) => {
     const otp = generateOTP();
 
     user.emailVerificationOtpHash = hashOTP(otp);
-    user.emailVerificationOtpExpiresAt = new Date(now + otpExpiryMs);
+    user.emailVerificationOtpExpiresAt =
+      new Date(now + otpExpiryMs);
     user.emailVerificationOtpAttempts = 0;
     user.emailVerificationLastSentAt = new Date(now);
 
@@ -305,9 +302,69 @@ export const resendVerificationOTP = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: "If the account needs verification, instructions will be sent.",
+      message: "If an account exists, an OTP will be sent.",
     });
   } catch (error) {
     next(error);
   }
 };
+
+
+// export const resendVerificationOTP = async (req, res, next) => {
+//   try {
+//     const email = String(req.body.email || "")
+//       .trim()
+//       .toLowerCase();
+
+//     const user = await User.findOne({ email }).select(
+//       "+emailVerificationOtpHash " +
+//         "+emailVerificationOtpExpiresAt " +
+//         "+emailVerificationOtpAttempts " +
+//         "+emailVerificationLastSentAt",
+//     );
+
+//     // Avoid revealing whether an account exists.
+//     if (!user || user.emailVerified) {
+//       return res.status(200).json({
+//         success: true,
+//         message:
+//           "If the account needs verification, instructions will be sent.",
+//       });
+//     }
+
+//     const now = Date.now();
+//     const lastSent = user.emailVerificationLastSentAt?.getTime() || 0;
+
+//     if (now - lastSent < resendCooldownMs) {
+//       return res.status(429).json({
+//         success: false,
+//         message: "Please wait 60 seconds before requesting another OTP.",
+//       });
+//     }
+
+//     const otp = generateOTP();
+
+//     user.emailVerificationOtpHash = hashOTP(otp);
+//     user.emailVerificationOtpExpiresAt = new Date(now + otpExpiryMs);
+//     user.emailVerificationOtpAttempts = 0;
+//     user.emailVerificationLastSentAt = new Date(now);
+
+//     await user.save();
+
+//     try {
+//       await sendVerificationOTP(user.email, otp);
+//     } catch (error) {
+//       user.emailVerificationOtpHash = null;
+//       user.emailVerificationOtpExpiresAt = null;
+//       await user.save();
+//       throw error;
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "If the account needs verification, instructions will be sent.",
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
