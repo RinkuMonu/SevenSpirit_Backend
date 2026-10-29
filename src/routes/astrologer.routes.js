@@ -6,4 +6,5 @@ router.get('/', listAstrologers);
 router.get('/featured', featuredAstrologers);
 router.get('/:slug', getAstrologer);
 
+
 export default router;

@@ -13,13 +13,10 @@ const COVER_IMAGE =
   'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1400&q=70';
 
 const getProfileImage = (gender, index) => {
-  const imageNumber = (index % 99) + 1;
-
-  if (gender === 'FEMALE') {
-    return `https://randomuser.me/api/portraits/women/${imageNumber}.jpg`;
-  }
-
-  return `https://randomuser.me/api/portraits/men/${imageNumber}.jpg`;
+  const folder = gender === 'FEMALE' ? 'female' : 'male';
+  const prefix = gender === 'FEMALE' ? 'astrologer' : 'pandit';
+  const imageNumber = ((index - 1) % 50) + 1;
+  return `/images/astrologers/${folder}/${prefix}${imageNumber}.jpg`;
 };
 
 // ==========================================
